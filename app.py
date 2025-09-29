@@ -11,33 +11,42 @@ def process_uploaded_file(uploaded_file):
     Esta função lê o arquivo e o transforma em um formato de dados limpo e organizado.
     """
     try:
-        # Pula as primeiras 3 linhas que são cabeçalhos e lê os dados do arquivo em memória
-        df = pd.read_csv(uploaded_file, skiprows=3, encoding='latin1')
+        # Pula as primeiras 4 linhas para ir direto aos dados e ignora os cabeçalhos do arquivo
+        df = pd.read_csv(uploaded_file, skiprows=4, header=None, encoding='latin1')
 
-        # O arquivo parece ter várias tabelas lado a lado.
-        # Vamos processar a primeira seção como exemplo: "RIO BONITO BRASIL 4,5 KG"
-        # Esta parte pode precisar de ajustes se a estrutura do seu arquivo mudar.
+        # Seleciona apenas as 5 primeiras colunas que correspondem ao primeiro produto
+        df_produto = df.iloc[:, 0:5]
         
-        df_produto = df.iloc[:, :5]
+        # Atribui os nomes corretos para essas 5 colunas
         df_produto.columns = ['ENTRADA', 'SAIDA', 'SALDO', 'DATA', 'ESTOQUE_CX_PARACATU']
-        df_produto['PRODUTO'] = "RIO BONITO BRASIL 4,5 KG" # Nome do produto
+        
+        # Adiciona uma coluna para identificar o produto (pode ser alterado se necessário)
+        df_produto['PRODUTO'] = "RIO BONITO BRASIL 4,5 KG"
 
-        # Limpeza e formatação dos dados
+        # --- Início da Limpeza dos Dados ---
+        
+        # Remove linhas onde a coluna 'DATA' está vazia, que geralmente são linhas de totais ou em branco
         df_produto = df_produto.dropna(subset=['DATA'])
+        
+        # Converte a coluna 'DATA' para o formato de data, tratando possíveis erros
         df_produto['DATA'] = pd.to_datetime(df_produto['DATA'], errors='coerce')
+        
+        # Remove qualquer linha que não pôde ser convertida para uma data válida
         df_produto = df_produto.dropna(subset=['DATA'])
 
-        # Converter colunas numéricas, tratando erros
+        # Converte as colunas numéricas para números, transformando erros em valores nulos (que serão removidos)
         for col in ['ENTRADA', 'SAIDA', 'SALDO', 'ESTOQUE_CX_PARACATU']:
             df_produto[col] = pd.to_numeric(df_produto[col], errors='coerce')
 
-        return df_produto.dropna() # Remove linhas com dados numéricos inválidos
+        # Remove qualquer linha que tenha valores nulos após a conversão, garantindo dados limpos
+        return df_produto.dropna()
 
     except Exception as e:
         st.error(f"Ocorreu um erro ao processar o arquivo: {e}")
+        st.error("Por favor, verifique se o arquivo CSV não está corrompido e se o formato é o esperado.")
         return None
 
-# --- Início do Dashboard ---
+# --- Início da Interface do Dashboard ---
 
 st.title('📊 Dashboard Interativo de Controle de Estoque')
 st.write("Faça o upload da sua planilha de estoque (.csv) para visualizar os dados.")
